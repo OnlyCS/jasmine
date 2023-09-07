@@ -12,10 +12,10 @@ bool      = { true_lit | false_lit }
 digit  = _{ '0'..'9' }
 digits = _{ digit ~ (digit | "_")* }
 
-int = { digits ~ ("i")? }
 /* 012, 012i */
+int = { digits ~ ("i")? }
+/* 012.3, 012.3f, 012., 12f */
 float = { digits ~ (("." ~ (digits ~ ("f")?)?) | "f") }
-/* 012.3, 012.3f, 012. */
 
 /* Escapes */
 escape_predefined = { "n" | "r" | "t" | "\\" | "0" | "'" | "\"" }
@@ -132,7 +132,7 @@ op_expr = { op_expr_recurse ~ (two_input_op ~ op_expr_recurse)+ }
 op_expr_paren   = _{ lparen ~ op_expr ~ rparen }
 op_expr_recurse =  { op_expr_paren | base_expr | definition }
 
-expr = { definition | op_expr | base_expr }
+expr = { op_expr | base_expr | definition }
 
 /* ** Assign ** */
 assign     = { "=" }
