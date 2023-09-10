@@ -14,6 +14,7 @@ pub trait Rewrite {
     fn rewrite(&self) -> String;
 }
 
-pub(crate) use crate::rewrite;
+pub use cuid::cuid2 as cuid;
 pub use itertools::Itertools;
-pub use rewrite::rewrite_ident;
+
+pub use std::collections::{HashMap, HashSet};
