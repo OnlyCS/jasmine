@@ -11,4 +11,5 @@ pub struct Enumeration {
     pub identifier: Identifier,
     pub variants: HashSet<EnumVariant>,
     pub generics: GenericArguments,
+    pub impls: Vec<Implementation>,
 }

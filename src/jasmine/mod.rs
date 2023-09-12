@@ -102,6 +102,20 @@ impl Parser {
         None
     }
 
+    pub fn find_ident_mut(&mut self, ident_str: &IdentName) -> Option<&mut Identifiable> {
+        let mut current_scope = Some(&mut self.current_scope);
+
+        while let Some(scope) = current_scope {
+            current_scope = scope.parent.as_mut().map(|parent| &mut **parent);
+
+            if let Some(ident) = scope.idents.get_mut(ident_str) {
+                return Some(ident);
+            }
+        }
+
+        None
+    }
+
     pub fn add_ident(&mut self, ident: Identifiable) {
         let previous = self
             .current_scope

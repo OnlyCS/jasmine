@@ -109,6 +109,7 @@ impl ParseToTree for Implementation {
         let mut for_type = None;
         let mut impl_trait = None;
         let mut methods = vec![];
+        let line_col = pair.line_col();
 
         for rule in pair.into_inner() {
             match rule.as_rule() {
@@ -151,7 +152,13 @@ impl ParseToTree for Implementation {
             methods,
         };
 
-        parser.add_to_tree(TreeItem::Impl(this));
+        let impl_for = parser.find_ident_mut(&for_type.unwrap().name).unwrap();
+
+        match impl_for {
+            Identifiable::Struct(s) => s.impls.push(this),
+            Identifiable::Enum(e) => e.impls.push(this),
+            _ => panic!("Cannot impl for a non-struct or non-enum type. At {line_col:?}",),
+        }
     }
 }
 

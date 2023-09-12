@@ -12,8 +12,6 @@ mod parser;
 mod prelude;
 
 use crate::prelude::*;
-use clap::Parser;
-use std::{fs::File, io::Write, path::PathBuf};
 
 fn main() -> Result<()> {
     Ok(())
