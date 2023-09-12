@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub identifier: Identifier,
+    pub identifier: IdentName,
     pub args: Vec<(Identifier, ExplicitType)>, // args are positional, can't use hashmap :(
     pub returns: Option<ExplicitType>,
     pub generics: GenericArguments,

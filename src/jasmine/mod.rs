@@ -42,8 +42,8 @@ pub trait ParseToSelf {
 
 #[derive(Clone, Debug)]
 pub struct Scope {
-    pub name: String,
-    pub idents: HashMap<String, Identifiable>,
+    pub id: ScopeId,
+    pub idents: HashMap<IdentName, Identifiable>,
     pub parent: Option<Box<Scope>>,
     pub tree: Vec<TreeItem>,
 }
@@ -56,7 +56,7 @@ impl Parser {
     pub fn new() -> Self {
         Self {
             current_scope: Scope {
-                name: format!("ROOT{}", cuid()),
+                id: cuid(),
                 idents: HashMap::new(),
                 parent: None,
                 tree: vec![],
@@ -64,33 +64,37 @@ impl Parser {
         }
     }
 
-    // without clone im an absolute chad
-    pub fn add_child_scope(&mut self) {
-        let mut creating = Scope {
-            name: String::from("CHILD"),
+    // without clone?? I feel like im cheating
+    pub fn add_child_scope(&mut self) -> ScopeId {
+        let child = Scope {
+            id: cuid(),
             idents: HashMap::new(),
             parent: None,
             tree: vec![],
         };
 
-        std::mem::swap(&mut creating, &mut self.current_scope);
+        let parent = mem::replace(&mut self.current_scope, child); // self.current_scope is now `child`
 
-        self.current_scope.parent = Some(Box::new(creating));
+        self.current_scope.parent = Some(Box::new(parent));
+
+        self.current_scope.id
     }
 
     pub fn escape_scope(&mut self) {
         if let Some(parent) = self.current_scope.parent.clone() {
             self.current_scope = *parent;
+        } else {
+            panic!("Cannot escape root scope");
         }
     }
 
-    pub fn find_ident(&self, ident_str: String) -> Option<&Identifiable> {
+    pub fn find_ident(&self, ident_str: &IdentName) -> Option<&Identifiable> {
         let mut current_scope = Some(&self.current_scope);
 
         while let Some(scope) = current_scope {
             current_scope = scope.parent.as_ref().map(|parent| &**parent);
 
-            if let Some(ident) = scope.idents.get(&ident_str) {
+            if let Some(ident) = scope.idents.get(ident_str) {
                 return Some(ident);
             }
         }
@@ -102,13 +106,10 @@ impl Parser {
         let previous = self
             .current_scope
             .idents
-            .insert(ident.ident_str().to_string(), ident);
+            .insert(*ident.ident_bytes(), ident);
 
-        if let Some(ident_str) = previous.as_ref().map(|n| n.ident_str()) {
-            panic!(
-                "Identifier {} already exists in scope current scope",
-                ident_str
-            );
+        if previous.is_some() {
+            panic!("Identifier already exists in current scope");
         }
     }
 

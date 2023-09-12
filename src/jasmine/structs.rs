@@ -3,16 +3,16 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Structure {
     pub identifier: Identifier,
-    pub fields: HashMap<String /* Properties shouldnt be compiler-scoped */, ExplicitType>,
+    pub fields: HashMap<IdentName /* Properties shouldnt be compiler-scoped */, ExplicitType>,
     pub generics: GenericArguments,
+    pub impls: Vec<Implementation>,
 }
 
 impl ParseToTree for Structure {
     fn parse_to_tree(parser: &mut Parser, pair: Pair<'_, Rule>) {
         let line_col = pair.line_col();
-        let outside_struct_scope = parser.current_scope().name.clone();
-        parser.add_child_scope(); // generic arguments can't be leaked
-        let in_struct_scope = parser.current_scope().name.clone();
+        let outside_struct_scope = parser.current_scope().id;
+        let in_struct_scope = parser.add_child_scope(); // generic arguments can't be leaked
 
         let mut fields = HashMap::new();
         let mut next_ident = None;
@@ -25,33 +25,35 @@ impl ParseToTree for Structure {
             match rule.as_rule() {
                 Rule::ident if struct_ident.is_none() => {
                     struct_ident = Some(Identifier {
-                        name: rule.as_str().to_string(),
-                        scope_name: outside_struct_scope.clone(),
+                        name: encode_ident(rule.as_str()),
+                        scope_id: outside_struct_scope,
                     })
                 }
                 Rule::generic_args => {
                     for generic in parse_generic_args(rule) {
                         let ident = Identifier {
                             name: generic,
-                            scope_name: in_struct_scope.clone(),
+                            scope_id: in_struct_scope,
                         };
 
-                        parser.add_ident(Identifiable::GenericArgument(ident.clone()));
+                        parser.add_ident(Identifiable::GenericArgument(ident));
 
                         generics.insert(ident, vec![]);
                     }
                 }
                 Rule::where_clause => {
                     for rule in rule.into_inner() {
-                        let Rule::where_unit = rule.as_rule() else { continue; };
+                        let Rule::where_unit = rule.as_rule() else {
+                            continue;
+                        };
 
                         let mut where_unit = rule.into_inner();
                         let ident_rule = where_unit.next().unwrap();
                         let constraint_rule = where_unit.next().unwrap();
 
                         let ident = Identifier {
-                            name: where_unit.next().unwrap().as_str().to_string(),
-                            scope_name: in_struct_scope.clone(),
+                            name: encode_ident(ident_rule.as_str()),
+                            scope_id: in_struct_scope,
                         };
 
                         if let Some(generic) = generics.get_mut(&ident) {
@@ -60,15 +62,14 @@ impl ParseToTree for Structure {
                             generic.push(constraint);
                         } else {
                             panic!(
-                                "Generic argument {} not found, at (line, col): {:?}",
-                                ident.name,
+                                "Generic argument not found, at (line, col): {:?}",
                                 ident_rule.line_col()
                             );
                         }
                     }
                 }
                 Rule::ident if next_ident.is_none() => {
-                    next_ident = Some(rule.as_str().to_string());
+                    next_ident = Some(encode_ident(rule.as_str()));
                 }
                 Rule::explicit_ty => {
                     let ty = ExplicitType::parse_to_self(parser, rule);
@@ -86,12 +87,18 @@ impl ParseToTree for Structure {
             }
         }
 
-        parser.add_ident(Identifiable::Struct(Structure {
+        parser.escape_scope();
+
+        let this = Self {
             identifier: struct_ident
                 .context(format!("Expected identifier, at {:?}", line_col))
                 .unwrap(),
             fields,
             generics,
-        }));
+            impls: vec![],
+        };
+
+        parser.add_ident(Identifiable::Struct(this.clone()));
+        parser.add_to_tree(TreeItem::Structure(this));
     }
 }

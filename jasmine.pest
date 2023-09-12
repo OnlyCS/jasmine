@@ -108,20 +108,20 @@ binary_op = { add_op | sub_op | mul_op | div_op | mod_op | and_op | or_op | eq_o
 unary_op  = { not_op | neg_op }
 
 /* ** Grammar ** */
-lparen = { "(" }
-rparen = { ")" }
-semi   = { ";" }
-comma  = { "," }
-lbrace = { "{" }
-rbrace = { "}" }
+lparen =  { "(" }
+rparen =  { ")" }
+semi   =  { ";" }
+comma  =  { "," }
+lbrace =  { "{" }
+rbrace =  { "}" }
 colon  = _{ ":" }
-lbrack = { "[" }
-rbrack = { "]" }
-dot    = { "." }
-dblcln = { "::" }
+lbrack =  { "[" }
+rbrack =  { "]" }
+dot    =  { "." }
+dblcln =  { "::" }
 
 /* ** Expressions ** */
-function_call_expr           = { ident ~ lparen ~ ident_colon_tys? ~ rparen }
+function_call_expr           = { ident ~ lparen ~ exprs? ~ rparen }
 identifier_expr              = { ident }
 unit_enum_expr               = { ident ~ dblcln ~ ident }
 tuple_enum_or_static_fn_expr = { ident ~ lparen ~ expr ~ (comma ~ expr)* ~ rparen }
@@ -200,7 +200,8 @@ struct_args = { struct_arg ~ (comma ~ struct_arg)* }
 struct      = { ident ~ lbrace ~ struct_args ~ rbrace }
 
 /* ** Impl ** */
-impl_def = { impl_kwd ~ generic_args? ~ explicit_ty ~ lbrace ~ (impl_fn_def)* ~ rbrace }
+impl_def =  { impl_kwd ~ impl_for? ~ ident ~ lbrace ~ (impl_fn_def)* ~ rbrace }
+impl_for = _{ explicit_ty ~ "for" }
 
 /* ** Enums ** */
 enum_def     =  { enum_kwd ~ ident ~ generic_args? ~ where_clause? ~ enum_block }

@@ -42,7 +42,7 @@ pub struct AfterDotExpression {
 pub struct BaseExpression {
     pub unarys: Vec<UnaryOperator>,
     pub kind: ExpressionType,
-    pub dot: AfterDotExpression,
+    pub dot: Option<AfterDotExpression>,
 }
 
 #[derive(Debug, Clone)]

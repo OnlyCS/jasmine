@@ -1,12 +1,12 @@
 use super::*;
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ClosureTypeArgument {
     pub generic: bool,
     pub explicit_type: ExplicitType,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExplicitType {
     Integer,
     Float,
@@ -24,6 +24,7 @@ pub enum ExplicitType {
         outer: Box<ExplicitType>,
         inner: Vec<ExplicitType>,
     },
+    SelfType,
 }
 
 impl ParseToSelf for ExplicitType {
@@ -75,19 +76,22 @@ impl ParseToSelf for ExplicitType {
                 }
             }
             Rule::ident_ty => {
-                let ident_str = inner_pr.as_str().to_string();
-                let ident = Identifier {
-                    name: ident_str,
-                    scope_name: parser.current_scope().name.clone(),
-                };
+                let ident_bytes = encode_ident(inner_pr.as_str());
 
-                ExplicitType::Custom(ident)
+                let ident = parser
+                    .find_ident(&ident_bytes)
+                    .context(format!("Could not find type, at {:?}", line_col))
+                    .unwrap();
+
+                ExplicitType::Custom(*ident.full_ident())
             }
             Rule::array_ty => {
                 let mut inner = None;
 
                 for rule in inner_pr.into_inner() {
-                    let Rule::explicit_ty = rule.as_rule() else { continue };
+                    let Rule::explicit_ty = rule.as_rule() else {
+                        continue;
+                    };
 
                     inner = Some(Box::new(ExplicitType::parse_to_self(parser, rule)));
                     break;
@@ -153,4 +157,116 @@ pub enum InferredType {
         inner: Vec<InferredType>,
     },
     Inferred,
+}
+
+impl ParseToSelf for InferredType {
+    fn parse_to_self(parser: &mut Parser, pair: Pair<'_, Rule>) -> Self {
+        let line_col = pair.line_col();
+        let inner_pr = pair.into_inner().next().unwrap();
+
+        match inner_pr.as_rule() {
+            Rule::int_ty => InferredType::Integer,
+            Rule::float_ty => InferredType::Float,
+            Rule::bool_ty => InferredType::Boolean,
+            Rule::string_ty => InferredType::String,
+            Rule::char_ty => InferredType::Character,
+            Rule::closure_ty => {
+                let mut arguments = vec![];
+                let mut return_type = None;
+                let mut after_rparen = false;
+                let mut current_arg = None;
+
+                for rule in inner_pr.into_inner() {
+                    match rule.as_rule() {
+                        Rule::rparen => after_rparen = true,
+                        Rule::generic_kwd => {
+                            current_arg = Some(ClosureTypeArgument {
+                                generic: true,
+                                explicit_type: ExplicitType::Integer,
+                            });
+                        }
+                        Rule::explicit_ty if !after_rparen => {
+                            let mut taken = current_arg.take().unwrap_or(ClosureTypeArgument {
+                                generic: false,
+                                explicit_type: ExplicitType::Integer,
+                            });
+
+                            taken.explicit_type = ExplicitType::parse_to_self(parser, rule);
+
+                            arguments.push(taken);
+                        }
+                        Rule::explicit_ty if after_rparen => {
+                            return_type = Some(Box::new(ExplicitType::parse_to_self(parser, rule)));
+                        }
+                        _ => {}
+                    }
+                }
+
+                InferredType::Closure {
+                    arguments,
+                    return_type,
+                }
+            }
+            Rule::ident_ty => {
+                let ident_bytes = encode_ident(inner_pr.as_str());
+
+                let ident = parser
+                    .find_ident(&ident_bytes)
+                    .context(format!("Could not find type, at {:?}", line_col))
+                    .unwrap();
+
+                InferredType::Custom(*ident.full_ident())
+            }
+            Rule::array_ty => {
+                let mut inner = None;
+
+                for rule in inner_pr.into_inner() {
+                    let Rule::explicit_ty = rule.as_rule() else {
+                        continue;
+                    };
+
+                    inner = Some(Box::new(ExplicitType::parse_to_self(parser, rule)));
+                    break;
+                }
+
+                InferredType::Array(
+                    inner
+                        .context(format!(
+                            "Array type must have inner type, at {:?}",
+                            line_col
+                        ))
+                        .unwrap(),
+                )
+            }
+            Rule::range_ty => InferredType::Range,
+            Rule::generic_ty => {
+                let mut outer = None;
+                let mut inner = vec![];
+
+                for rule in inner_pr.into_inner() {
+                    match rule.as_rule() {
+                        Rule::explicit_ty if outer.is_none() => {
+                            outer = Some(Box::new(ExplicitType::parse_to_self(parser, rule)));
+                        }
+                        Rule::implicit_ty => {
+                            inner.push(InferredType::parse_to_self(parser, rule));
+                        }
+                        _ => {}
+                    }
+                }
+
+                InferredType::Generic {
+                    outer: outer
+                        .context(format!(
+                            "Generic type must have outer type, at {:?}",
+                            line_col
+                        ))
+                        .unwrap(),
+                    inner,
+                }
+            }
+            Rule::explicit_infer_ty => InferredType::Inferred,
+            _ => panic!("Type expected during parsing, at {:?}", line_col),
+        }
+    }
 }

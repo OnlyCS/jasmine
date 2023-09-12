@@ -1,3 +1,5 @@
+#![feature(mem_copy_fn, if_let_guard)]
+
 extern crate anyhow;
 extern crate clap;
 extern crate itertools;
