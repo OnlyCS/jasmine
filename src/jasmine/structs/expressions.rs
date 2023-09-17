@@ -2,26 +2,26 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum AfterDotExpressionType {
-    FunctionCall(Identifier),
-    Property(Identifier),
+    FunctionCall(String),
+    Property(String),
     IndexArray(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]
 pub enum ExpressionType {
-    FunctionCall(Identifier),
-    Ident(Identifier),
+    FunctionCall(String),
+    Ident(String),
     UnitEnum {
-        type_ident: Identifier,
-        variant: Identifier,
+        type_ident: String,
+        variant: String,
     },
     StaticFunction {
         ty: ExplicitType,
         function: FunctionCall,
     },
     TupleEnum {
-        type_ident: Identifier,
-        variant: Identifier,
+        type_ident: String,
+        variant: String,
         inner: Box<Expression>,
     },
     TypeCast {

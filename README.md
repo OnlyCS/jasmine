@@ -19,7 +19,7 @@ I decided to make my own programming language that compiles to Java source code.
 - [x] If-let statements (for enums only)
 - [x] Match statements (for enums only)
 - [x] Nice builtins
-- [] Type casting (not planned)
+- [] Type casting
 - [x] Idk what else should be here, but probably, yes!
 
 ## Usage

@@ -79,9 +79,9 @@ as_kwd       = _{ "as" }
 kwd          = _{ fn_kwd | let_kwd | if_kwd | else_kwd | while_kwd | for_kwd | return_kwd | break_kwd | continue_kwd | struct_kwd | enum_kwd | trait_kwd | as_kwd }
 
 /* ** Identifiers ** */
-ident_char = @{ ASCII_ALPHANUMERIC | "_" }
+ident_char = @{ (!kwd ~ ASCII_ALPHANUMERIC) | "_" }
 ident_str  = @{ (ASCII_ALPHA | "_") ~ ident_char* }
-ident      = ${ ident_str }
+ident      = ${ (!kwd ~ ident_str) }
 
 /* ** Mathmatical Operators ** */
 add_op = { "+" }

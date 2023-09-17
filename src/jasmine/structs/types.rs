@@ -13,18 +13,19 @@ pub enum ExplicitType {
     Boolean,
     String,
     Character,
-    Custom(Identifier),
+    Custom(String),
     Closure {
         arguments: Vec<ClosureTypeArgument>,
         return_type: Option<Box<ExplicitType>>,
     },
     Array(Box<ExplicitType>),
     Range,
-    Generic {
+    WithGeneric {
         outer: Box<ExplicitType>,
         inner: Vec<ExplicitType>,
     },
     SelfType,
+    Generic(String),
 }
 
 impl ParseToSelf for ExplicitType {
@@ -76,14 +77,11 @@ impl ParseToSelf for ExplicitType {
                 }
             }
             Rule::ident_ty => {
-                let ident_bytes = encode_ident(inner_pr.as_str());
+                if !parser.custom_type_exists(inner_pr.as_str()) {
+                    panic!("Could not find custom type, at {:?}", inner_pr.line_col())
+                }
 
-                let ident = parser
-                    .find_ident(&ident_bytes)
-                    .context(format!("Could not find type, at {:?}", line_col))
-                    .unwrap();
-
-                ExplicitType::Custom(*ident.full_ident())
+                ExplicitType::Custom(inner_pr.as_str().to_string())
             }
             Rule::array_ty => {
                 let mut inner = None;
@@ -123,7 +121,7 @@ impl ParseToSelf for ExplicitType {
                     }
                 }
 
-                ExplicitType::Generic {
+                ExplicitType::WithGeneric {
                     outer: outer
                         .context(format!(
                             "Generic type must have outer type, at {:?}",
@@ -145,18 +143,19 @@ pub enum InferredType {
     Boolean,
     String,
     Character,
-    Custom(Identifier),
+    Custom(String),
     Closure {
         arguments: Vec<ClosureTypeArgument>,
         return_type: Option<Box<ExplicitType>>,
     },
     Array(Box<ExplicitType>),
     Range,
-    Generic {
+    WithGeneric {
         outer: Box<ExplicitType>,
         inner: Vec<InferredType>,
     },
     Inferred,
+    Generic(String),
 }
 
 impl ParseToSelf for InferredType {
@@ -208,14 +207,11 @@ impl ParseToSelf for InferredType {
                 }
             }
             Rule::ident_ty => {
-                let ident_bytes = encode_ident(inner_pr.as_str());
+                if !parser.custom_type_exists(inner_pr.as_str()) {
+                    panic!("Could not find custom type, at {:?}", inner_pr.line_col())
+                }
 
-                let ident = parser
-                    .find_ident(&ident_bytes)
-                    .context(format!("Could not find type, at {:?}", line_col))
-                    .unwrap();
-
-                InferredType::Custom(*ident.full_ident())
+                InferredType::Custom(inner_pr.as_str().to_string())
             }
             Rule::array_ty => {
                 let mut inner = None;
@@ -255,7 +251,7 @@ impl ParseToSelf for InferredType {
                     }
                 }
 
-                InferredType::Generic {
+                InferredType::WithGeneric {
                     outer: outer
                         .context(format!(
                             "Generic type must have outer type, at {:?}",

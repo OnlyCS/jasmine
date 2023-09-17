@@ -20,7 +20,7 @@ pub use std::mem;
 
 pub const SELF_IDENT: &str = "__jas_self"; // exactly 10 characters, will fit perfectly in byte array
 
-pub fn cuid() -> ScopeId {
+pub fn cuid() -> Id {
     let mut bytes = [0; 24];
 
     for (i, byte) in cuid::cuid2().bytes().enumerate() {
@@ -34,24 +34,4 @@ pub fn cuid() -> ScopeId {
     bytes
 }
 
-pub fn encode_ident<'a>(ident: &'a str) -> crate::jasmine::IdentName {
-    let mut bytes = [0; 10];
-
-    let sha = if ident == "self" {
-        SELF_IDENT.to_string()
-    } else {
-        sha256::digest(ident.as_bytes())
-    };
-
-    for (i, byte) in sha.bytes().enumerate() {
-        if i >= 10 {
-            break;
-        }
-
-        bytes[i] = byte;
-    }
-
-    bytes
-}
-
-pub type ScopeId = [u8; 24];
+pub type Id = [u8; 24];
