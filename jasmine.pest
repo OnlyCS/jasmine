@@ -33,12 +33,12 @@ string = ${ "\"" ~ ((!("\"") ~ raw_char) | escape)* ~ "\"" }
 array = { lbrack ~ (expr ~ (comma ~ expr)*)? ~ rbrack }
 
 range_incl = { "=" }
-range      = { int ~ ".." ~ range_incl? ~ int }
+range      = { expr ~ ".." ~ range_incl? ~ expr }
 
 /* Closures */
 closure = { "|" ~ ident ~ (comma ~ ident)* ~ "|" ~ block }
 
-literal = { range | array | string | struct | float | int | bool | char | closure }
+literal = { closure | range | array | string | struct | float | int | bool | char }
 
 int_ty              = { "int" }
 float_ty            = { "float" }
@@ -52,8 +52,8 @@ range_ty            = { "range" }
 generic_ty          = { /* ?? */ WHITESPACE ~ (!generic_ty ~ explicit_ty) ~ "<" ~ explicit_ty ~ (comma ~ explicit_ty)* ~ ">" }
 inferred_generic_ty = { (!generic_ty ~ explicit_ty) ~ "<" ~ (implicit_ty) ~ (comma ~ implicit_ty)* ~ ">" }
 explicit_infer_ty   = { "_" }
-explicit_ty         = { int_ty | float_ty | bool_ty | char_ty | string_ty | closure_ty | ident_ty | array_ty | range_ty | generic_ty }
-implicit_ty         = { int_ty | float_ty | bool_ty | char_ty | string_ty | closure_ty | ident_ty | array_ty | range_ty | generic_ty | inferred_generic_ty | explicit_infer_ty }
+explicit_ty         = { generic_ty | closure_ty | array_ty | int_ty | float_ty | bool_ty | char_ty | string_ty | range_ty | ident_ty }
+implicit_ty         = { generic_ty | closure_ty | array_ty | int_ty | float_ty | bool_ty | char_ty | string_ty | range_ty | inferred_generic_ty | explicit_infer_ty | ident_ty }
 
 /* ** Keywords ** */
 fn_kwd       = _{ "fn" }
@@ -79,7 +79,7 @@ as_kwd       = _{ "as" }
 kwd          = _{ fn_kwd | let_kwd | if_kwd | else_kwd | while_kwd | for_kwd | return_kwd | break_kwd | continue_kwd | struct_kwd | enum_kwd | trait_kwd | as_kwd }
 
 /* ** Identifiers ** */
-ident_char = @{ (!kwd ~ ASCII_ALPHANUMERIC) | "_" }
+ident_char = @{ (ASCII_ALPHANUMERIC) | "_" }
 ident_str  = @{ (ASCII_ALPHA | "_") ~ ident_char* }
 ident      = ${ (!kwd ~ ident_str) }
 
@@ -104,7 +104,7 @@ gt_op  = { ">" }
 lte_op = { "<=" }
 gte_op = { ">=" }
 
-binary_op = { add_op | sub_op | mul_op | div_op | mod_op | and_op | or_op | eq_op | neq_op | gt_op | lt_op | gte_op | lte_op }
+binary_op = { gte_op | lte_op | eq_op | neq_op | and_op | or_op | gt_op | lt_op | add_op | sub_op | mul_op | div_op | mod_op }
 unary_op  = { not_op | neg_op }
 
 /* ** Grammar ** */
@@ -126,7 +126,7 @@ identifier_expr              = { ident }
 unit_enum_expr               = { ident ~ dblcln ~ ident }
 tuple_enum_or_static_fn_expr = { ident ~ lparen ~ expr ~ (comma ~ expr)* ~ rparen }
 type_cast_expr               = { /* ?? */ WHITESPACE ~ expr ~ as_kwd ~ explicit_ty }
-creation_expr                = { literal }
+literal_expr                 = { literal }
 iife_expr                    = { block }
 
 after_dot_property  = { dot ~ ident }
@@ -135,7 +135,7 @@ after_dot_array_idx = { lbrack ~ expr ~ rbrack }
 after_dot           = { after_dot_property | after_dot_fn_call | after_dot_array_idx }
 
 base_expr = {
-    unary_op* ~ (function_call_expr | identifier_expr | unit_enum_expr | tuple_enum_or_static_fn_expr | type_cast_expr | creation_expr | iife_expr) ~ (after_dot)*
+    unary_op* ~ (function_call_expr | identifier_expr | unit_enum_expr | tuple_enum_or_static_fn_expr | type_cast_expr | literal_expr | iife_expr | (lparen ~ base_expr ~ rparen)) ~ (after_dot)*
 }
 
 full_expr_paren   = _{ lparen ~ full_expr ~ rparen }
@@ -145,7 +145,7 @@ full_expr = {
     full_expr_recurse ~ (binary_op ~ full_expr_recurse)*
 }
 
-expr  = { full_expr | base_expr }
+expr  = { full_expr_paren | full_expr | base_expr }
 exprs = { expr ~ (comma ~ expr)* }
 
 /* ** Assign ** */
